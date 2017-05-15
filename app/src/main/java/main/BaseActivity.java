@@ -10,8 +10,10 @@ import android.view.MenuItem;
 /**
  * Created by orange on 4/29/17.
  */
+
+// override the baseactivity so that we can have the immersive mode of the sidebar
 public class BaseActivity extends Activity{
-	protected final static Intent intent = new Intent();  //?????????????
+	protected final static Intent intent = new Intent(); 
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -20,7 +22,6 @@ public class BaseActivity extends Activity{
 
 	}
 
-	
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event) {
 		if(keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_DOWN){
@@ -46,14 +47,9 @@ public class BaseActivity extends Activity{
 
     }
     
-    
-    //======================================================
-    
     public void startActivity(Class<?> c) {
 		intent.setClass(this, c);
 		startActivity(intent);
 	};
-	    
-    
-	
+
 }
