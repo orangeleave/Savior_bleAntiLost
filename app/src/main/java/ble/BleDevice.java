@@ -3,6 +3,7 @@ package ble;
 /**
  * Created by orange on 4/28/17.
  */
+
 public class BleDevice {
 
 	private String name;     // name of ble
@@ -40,7 +41,7 @@ public class BleDevice {
 		this.macAddr = macAddr;
 	}
 
-
+	// overwrite the hashCode and equals functions, so that we can compare two bleDevices
 	public int hashCode(){
 
 		return 17+ 9 * getMacAddr().hashCode();
@@ -64,8 +65,4 @@ public class BleDevice {
 		return "Ble name=" + name + ", macAddr="
 				+ macAddr + ", rssi=" + rssi ;
 	}
-
-
-
-	
 }
