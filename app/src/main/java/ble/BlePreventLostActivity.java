@@ -39,45 +39,46 @@ public class BlePreventLostActivity extends BaseActivity implements OnClickListe
 
     public static List<BleDevice> foundBleDevicesList = new ArrayList<>();
     public static List<BleDevice> scannedBleDevicesList = new ArrayList<>();
+    // Uses MAC address as key to store data
     protected Map<String, Integer> scannedBleDevicesData = new HashMap<>();
 
     private BleDeviceListAdapter mDeviceListAdapter;
     private BluetoothAdapter mBluetoothAdapter;
 
+    // These two flag values indicate the process just enter the scanning period
     private boolean mFindDevice = true;
     private boolean mLiveDevice = false;
     private Handler mHandler;
     private DeviceLiveThread deviceLiveThread;
     private static final int REQUEST_ENABLE_BT = 1;
-    // Stops scanning after 10 seconds.
+    // Sets the scan period as 10 seconds
     private static final long SCAN_PERIOD = 1000 * 10;
+    // Sets the live period as 3 seconds (this is for "keep tracking" button)
     private static final long LIVE_PERIOD = 1000 * 3;
     private static final String target_macAddr = "E3:0A:17:D9:A1:AF";
     @Override
-    public void onCreate(Bundle savedInstanceState) {    //
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.ble_prevent_lost);
         instruction_tips = (TextView) findViewById(R.id.instruction_tips);
         instruction_tips.setOnClickListener(this);
         bleListView = (ListView) findViewById(R.id.ble_device_list);
 
-        // Initializes list view adapter.
-        mDeviceListAdapter = new BleDeviceListAdapter(this, foundBleDevicesList);// new mDeviceListAdapter(this);
+        // Initializes list view adapter
+        mDeviceListAdapter = new BleDeviceListAdapter(this, foundBleDevicesList);
         bleListView.setAdapter(mDeviceListAdapter);
 
         mHandler = new Handler();
-        // Use this check to determine whether BLE is supported on the device.  Then you can
-        // selectively disable BLE-related features.
+        // Checks whether BLE is supported on the device
         if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
             Toast.makeText(this, R.string.ble_not_supported, Toast.LENGTH_SHORT).show();
             finish();
         }
-        // Initializes a Bluetooth adapter.  For API level 18 and above, get a reference to
-        // BluetoothAdapter through BluetoothManager.
+        // Initializes a Bluetooth adapter
         final BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         mBluetoothAdapter = bluetoothManager.getAdapter();
 
-        // Checks if Bluetooth is supported on the device.
+        // Checks if Bluetooth is supported
         if (mBluetoothAdapter == null) {
             Toast.makeText(this, R.string.error_bluetooth_not_supported, Toast.LENGTH_SHORT).show();
             finish();
@@ -86,20 +87,15 @@ public class BlePreventLostActivity extends BaseActivity implements OnClickListe
         findDevice(true);
     }
 
-
-    /**
-     * scan ble devices
-     *
-     * @param enable true:scan
-     *
-     */
+    // Scan BLE devices
+    // enable --> true: scan and stop after period; false: stop while onPause
     private void findDevice(final boolean enable) {
         if (enable) {
 
             setInstructStytle(true);
             mFindDevice = true;
-            mBluetoothAdapter.startLeScan(mLeScanCallback);   //start scanning
-//            mBluetoothLeScanner.startScan(mLeScanCallback);
+            // Starts scanning
+            mBluetoothAdapter.startLeScan(mLeScanCallback);
             mDeviceListAdapter.notifyDataSetChanged();
 
             mHandler.postDelayed(new Runnable() {
@@ -108,35 +104,26 @@ public class BlePreventLostActivity extends BaseActivity implements OnClickListe
                     if (mFindDevice) {
                         if (foundBleDevicesList != null && foundBleDevicesList.size() > 0) {
                             instruction_tips.setVisibility(View.VISIBLE);
-
-
                             for (int i = 0; i < foundBleDevicesList.size(); i++) {
                                 List<Integer> tempList = new ArrayList<>();
                                 scannedBleDevicesData.put(foundBleDevicesList.get(i).getMacAddr(), foundBleDevicesList.get(i).getRssi());
                             }
-
                         }
                     }
                     mBluetoothAdapter.stopLeScan(mLeScanCallback);
-
-
                     mFindDevice = false;
                     invalidateOptionsMenu();
-
                 }
             }, SCAN_PERIOD);
-
         } else {
             setInstructStytle(false);
             mFindDevice = false;
             mBluetoothAdapter.stopLeScan(mLeScanCallback);
-
         }
-
         invalidateOptionsMenu();
-
     }
 
+    // Device can callback
     private BluetoothAdapter.LeScanCallback mLeScanCallback =
             new BluetoothAdapter.LeScanCallback() {
                 @Override
@@ -147,23 +134,20 @@ public class BlePreventLostActivity extends BaseActivity implements OnClickListe
                             Log.e(TAG, "devices" + device.getName() + "    Rssi:" + rssi + " " + device.getAddress());
 //                            if (device.getAddress().equals(target_macAddr)) {
                                 BleDevice bleDevice = new BleDevice(device.getName(), device.getAddress(), rssi);
-
-                                if (mFindDevice) { //Device is found for the first time
+                                //Device is found for the first time
+                                if (mFindDevice) {
                                     if (foundBleDevicesList != null && !foundBleDevicesList.contains(bleDevice)) {
                                         foundBleDevicesList.add(bleDevice);
                                         mDeviceListAdapter.notifyDataSetChanged();
                                     }
                                 } else {
-
-                                    //
                                     if (scannedBleDevicesList != null && !scannedBleDevicesList.contains(bleDevice)) {
                                         scannedBleDevicesList.add(bleDevice);
 	                        mDeviceListAdapter.notifyDataSetChanged();
                                     }
 
-                                    //2. update the rssi
+                                    // Updates the RSSI values
                                     scannedBleDevicesData.put(bleDevice.getMacAddr(), rssi);
-
                                     mDeviceListAdapter.notifyDataSetChanged();
                                 }
                             }
@@ -175,7 +159,7 @@ public class BlePreventLostActivity extends BaseActivity implements OnClickListe
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        // User chose not to enable Bluetooth.
+        // Users choose not to enable Bluetooth
         if (requestCode == REQUEST_ENABLE_BT && resultCode == Activity.RESULT_CANCELED) {
             finish();
             return;
@@ -183,16 +167,12 @@ public class BlePreventLostActivity extends BaseActivity implements OnClickListe
         super.onActivityResult(requestCode, resultCode, data);
     }
 
-    /**
-     * styple setting
-     *
-     * @param needReScan
-     */
+    // Sets styling
     private void setInstructStytle(boolean needReScan) {
         if (needReScan) {
             instruction_tips.setVisibility(View.INVISIBLE);
             mDeviceListAdapter.clear();
-        } else {//gradually change the view
+        } else {
             instruction_tips.setVisibility(View.VISIBLE);
         }
     }
@@ -206,7 +186,7 @@ public class BlePreventLostActivity extends BaseActivity implements OnClickListe
 
         @Override
         public void run() {
-            // TODO Auto-generated method stub
+            // This is auto-generated method
             while (isRunning) {
                 if (mLiveDevice) {
                     if (scannedBleDevicesData != null && scannedBleDevicesData.size() > 0) {
@@ -219,14 +199,12 @@ public class BlePreventLostActivity extends BaseActivity implements OnClickListe
                     try {
                         Thread.sleep(LIVE_PERIOD);
                     } catch (InterruptedException e) {
-                        // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
                 } else {
                     try {
                         Thread.sleep(LIVE_PERIOD);
                     } catch (InterruptedException e) {
-                        // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
                 }
@@ -241,39 +219,34 @@ public class BlePreventLostActivity extends BaseActivity implements OnClickListe
         }
     }
 
-    /**
-     * Display the updated results.
-     *
-     *
-     */
+    // Displays the updated results
     private void displayRssiResult(Map<String, Integer> scannedBleDevices, String macAddr) {
 
-
+        // This is for dealing with exceptions
         if (scannedBleDevices == null || !scannedBleDevices.containsKey(macAddr)) {
             int size = foundBleDevicesList.size();
             for (int i = 0; i < size; i++) {
                 foundBleDevicesList.get(i).setRssi(0);
             }
         } else {
-
-
+            // If the target device exists
             int size = foundBleDevicesList.size();
             for (int i = 0; i < size; i++) {
                 String foundDeviceKey = foundBleDevicesList.get(i).getMacAddr();
+                // If the target device is found, then update its RSSI value
                 if (macAddr.equals(foundDeviceKey)) {
                     foundBleDevicesList.get(i).setRssi(scannedBleDevices.get(macAddr));
                 } else {
+                    // If the target device is not found, then set it to be RSSI = 0, i.e. lost
                     foundBleDevicesList.get(i).setRssi(0);
                 }
             }
         }
 
-        //2.Update notification data
+        // Updates the notification data
         runOnUiThread(new Runnable() {
-
             @Override
             public void run() {
-                // TODO Auto-generated method stub
                 mDeviceListAdapter.notifyDataSetChanged();
             }
         });
@@ -283,11 +256,9 @@ public class BlePreventLostActivity extends BaseActivity implements OnClickListe
 
     }
 
-    //======================================================================================
-
     @Override
     public void onClick(View v) {
-        // TODO Auto-generated method stub
+        // Sets auto-generated method for clicks
         switch (v.getId()) {
             case R.id.instruction_tips:
                 mLiveDevice = !mLiveDevice;
@@ -296,14 +267,12 @@ public class BlePreventLostActivity extends BaseActivity implements OnClickListe
                 if (mLiveDevice) {
                     instruction_tips.setText(R.string.device_live_stop);
                     mBluetoothAdapter.startLeScan(mLeScanCallback);
-
                     startDeviceLiving();
                 } else {
                     instruction_tips.setText(R.string.device_live_start);
                     mBluetoothAdapter.stopLeScan(mLeScanCallback);
                     stopDeviceLiving();
                 }
-
                 break;
             default:
                 break;
@@ -331,7 +300,7 @@ public class BlePreventLostActivity extends BaseActivity implements OnClickListe
         return true;
     }
 
-    //Scan & Stop
+    // Scan & Stop
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
@@ -367,8 +336,8 @@ public class BlePreventLostActivity extends BaseActivity implements OnClickListe
     protected void onStart() {
         super.onStart();
         Log.e(TAG, "*************onStart");
-        // Ensures Bluetooth is enabled on the device.  If Bluetooth is not currently enabled,
-        // fire an intent to display a dialog asking the user to grant permission to enable it.
+        // Ensures Bluetooth is enabled on the device
+        // If Bluetooth is not currently enabled, then display a dialog asking the user to grant permission to enable it.
         if (!mBluetoothAdapter.isEnabled()) {
             if (!mBluetoothAdapter.isEnabled()) {
                 Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
