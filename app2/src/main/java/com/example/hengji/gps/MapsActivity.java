@@ -46,28 +46,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     DynamoDBMapper mapper;
     Runnable[] runnableArray = new Runnable[2];
 
-    //    Runnable updateMarker = new Runnable() {
-//        @Override
-//        public void run() {
-//            marker.remove();
-//            Log.d(TAG,g+"???");
-//            if(g != null) {
-//                LatLng pos = new LatLng(Double.valueOf(g.getLatitude()), Double.valueOf(g.getLongitude()));
-//                marker = mMap.addMarker(new MarkerOptions().position(pos).title("gps"));
-//
-//                handler.postDelayed(this, MARKER_UPDATE_INTERVAL);
-//            }
-//        }
-//    };
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
 
-        Log.d(TAG, "hhh");
+        // connect to AWS DynamoDB
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(map);
         mapFragment.getMapAsync(this);
@@ -76,6 +61,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         ddbClient = new AmazonDynamoDBClient(b);
         ddbClient.setRegion(Region.getRegion(Regions.US_EAST_1));
         mapper = new DynamoDBMapper(ddbClient);
+
+        // get the most recent geo data from DynamoDB
         Runnable runnable = new Runnable() {
             public void run() {
                 //DynamoDB calls go here
@@ -85,6 +72,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 for(geoData geo:result) {
                     list.add(geo);
                 }
+
                 // sort the list in order to get the latest data
                 Collections.sort(list, new Comparator<geoData>() {
                     @Override
@@ -93,22 +81,20 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         return d.intValue();
                     }
                 });
-//                for(int i = 1; i < list.size(); i++) {
-//                    geoData gg = list.get(i);
-//                    mapper.delete(gg);
-//                }
+
                 g = new geoData();
                 g.setDate(result.get(0).getDate());
                 g.setTime(result.get(0).getTime());
                 g.setLatitude(result.get(0).getLatitude());
                 g.setLongitude(result.get(0).getLongitude());
-                Log.d(TAG, "???" + g);
+                Log.d(TAG, "updated_data" + g);
 
             }
         };
         Thread mythread = new Thread(runnable);
         mythread.start();
 
+        // update the marker on Google Map
         new Thread() {
             public void run() {
                 while(true) {
@@ -117,12 +103,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                             @Override
                             public void run() {
-                                if (g != null) {
+                                if (g != null) {            // if geo data is valid
                                     LatLng pos = new LatLng(Double.valueOf(g.getLatitude()), Double.valueOf(g.getLongitude()));
-                                    marker.remove();
-                                    mMap.addMarker(new MarkerOptions().position(pos));
-                                    mMap.moveCamera(CameraUpdateFactory.newLatLng(pos));
-                                    mMap.animateCamera( CameraUpdateFactory.zoomTo( 15.0f ) );
+                                    marker.remove();        // remove old marker
+                                    mMap.addMarker(new MarkerOptions().position(pos));  // add new marker
+                                    mMap.moveCamera(CameraUpdateFactory.newLatLng(pos));// move to current location
+                                    mMap.animateCamera( CameraUpdateFactory.zoomTo( 15.0f ) );//zoom in
                                 }
                             }
                         });
@@ -135,14 +121,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }.start();
 
     }
-
-
-//        handler.postDelayed(updateMarker, MARKER_UPDATE_INTERVAL);
-
-
-
-
-//    }
 
 
     /**
